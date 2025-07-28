@@ -9,11 +9,16 @@ from .prompts import DeveloperToolsPrompts
 
 
 class Workflow:
-    def __init__(self):
+    def __init__(self, status_callback=None):
         self.firecrawl = FirecrawlService()
         self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         self.prompts = DeveloperToolsPrompts()
         self.workflow = self._build_workflow()
+        self.status_callback = status_callback
+
+    def _update_status(self, message):
+        if self.status_callback:
+            self.status_callback(message)
 
     def _build_workflow(self):
         graph = StateGraph(ResearchState)
@@ -30,16 +35,33 @@ class Workflow:
 
 
     def _extract_tools(self, state: ResearchState) -> Dict[str, Any]:
-        print(f"🔎 Finding Articles about {state.query}")
+        self._update_status(f"🔎 Finding Articles about {state.query}...")
         article_query = f"{state.query} tools comparison best alternatives"
         search_results = self.firecrawl.search_companies(article_query, num_results=3)
 
+        # Handle empty search results
+        if not search_results.data:
+            self._update_status("❌ No search results found. Please try a different query.")
+            return {"extracted_tools": []}
+
         all_content = ""
-        for result in search_results.data:
+        for i, result in enumerate(search_results.data):
             url = result.get("url", "")
+            if not url:
+                continue
+                
+            self._update_status(f"Scraping {url}... ({i+1}/{len(search_results.data)})")
             scraped = self.firecrawl.scrape_company_page(url)
             if scraped:
                 all_content += scraped.markdown[:2000] + "\n\n"
+            
+            # Add delay to avoid rate limiting
+            import time
+            time.sleep(1)  # 1 second delay between requests
+
+        if not all_content.strip():
+            self._update_status("❌ No content could be scraped. Please try again later.")
+            return {"extracted_tools": []}
 
         messages = [
             SystemMessage(content=self.prompts.TOOL_EXTRACTION_SYSTEM),
@@ -49,12 +71,12 @@ class Workflow:
         try:
             response = self.llm.invoke(messages)
             tool_names = [name.strip() for name in response.content.split("\n") if name.strip()]
-            print(f"🛠️ Extracted Tools: {', '.join(tool_names[:7])}")
+            self._update_status(f"🛠️ Extracted Tools: {', '.join(tool_names[:7])}")
             return {
                 "extracted_tools": tool_names
             }
         except Exception as e:
-            print(f"❌ Exception occured: {e}")
+            self._update_status(f"❌ Exception occurred: {e}")
             return {"extracted_tools": []}
             
 
@@ -71,7 +93,7 @@ class Workflow:
             return analysis
         except Exception as e:
             # Prevent graph crash
-            print(f"❌ Exception occured: {e}")
+            self._update_status(f"❌ Exception occured: {e}")
             return CompanyAnalysis(
                 pricing_model="Unknown",
                 is_open_source=None,
@@ -86,8 +108,13 @@ class Workflow:
     def _research(self, state: ResearchState) -> Dict[str, Any]:
         extracted_tools = getattr(state, "extracted_tools", [])
         if not extracted_tools:
-            print(f"❗️ No extracted tools found, falling back to direct search")  
+            self._update_status("❗️ No extracted tools found, falling back to direct search")
             search_results = self.firecrawl.search_companies(state.query, num_results=3)
+            # Handle empty search results
+            if not search_results.data:
+                self._update_status("❌ No search results found. Please try a different query.")
+                return {"companies": []}
+            
             tool_names = [
                 result.get("metadata", {}).get("title", "Unknown")
                 for result in search_results.data
@@ -95,14 +122,27 @@ class Workflow:
         else:
             tool_names = extracted_tools[:5]
 
-        print(f"🧪 Researching specific tools: {', '.join(tool_names)}")
+        self._update_status(f"🧪 Researching specific tools: {', '.join(tool_names)}")
 
         companies = []
-        for tool_name in tool_names:
-            tool_search_results = self.firecrawl.search_companies(tool_name + " official site", num_results=1)
-            if tool_search_results:
+        for i, tool_name in enumerate(tool_names):
+            self._update_status(f"🔍 Researching {tool_name} ({i+1}/{len(tool_names)})...")
+            
+            try:
+                tool_search_results = self.firecrawl.search_companies(tool_name + " official site", num_results=1)
+                
+                # Handle empty search results or rate limiting
+                if not tool_search_results or not tool_search_results.data:
+                    self._update_status(f"⚠️ No search results found for {tool_name}, skipping...")
+                    continue
+                
                 result = tool_search_results.data[0]
                 url = result.get("url", "")
+                
+                if not url:
+                    self._update_status(f"⚠️ No URL found for {tool_name}, skipping...")
+                    continue
+                
                 company = CompanyInfo(
                     name=tool_name,
                     description=result.get("markdown", ""),
@@ -111,6 +151,10 @@ class Workflow:
                     competitors=[]
                 )
 
+                # Add delay to avoid rate limiting
+                import time
+                time.sleep(1)  # 1 second delay between requests
+                
                 scraped = self.firecrawl.scrape_company_page(url)
                 if scraped:
                     content = scraped.markdown
@@ -124,6 +168,15 @@ class Workflow:
                     company.integration_capabilities = analysis.integration_capabilities
 
                 companies.append(company)
+                self._update_status(f"✅ Completed research for {tool_name}")
+                
+            except Exception as e:
+                self._update_status(f"❌ Error researching {tool_name}: {str(e)}")
+                continue
+        
+        if not companies:
+            self._update_status("❌ No companies could be researched. Please try again later or with a different query.")
+        
         return {"companies": companies}
 
     
