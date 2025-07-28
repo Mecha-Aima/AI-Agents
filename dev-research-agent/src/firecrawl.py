@@ -2,7 +2,7 @@ from firecrawl import FirecrawlApp, ScrapeOptions
 from dotenv import load_dotenv
 import os 
 
-load_dotenv
+load_dotenv()
 
 class FirecrawlService:
     def __init__(self):
@@ -24,7 +24,8 @@ class FirecrawlService:
             return result
         except Exception as e:
             print(f"❌ Exception occured: {e}")
-            return []
+            # Return empty result structure to prevent crashes
+            return type('SearchResult', (), {'data': []})()
 
 
     def scrape_company_page(self, url: str):

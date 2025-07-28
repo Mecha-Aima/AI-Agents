@@ -41,21 +41,21 @@ class Workflow:
             if scraped:
                 all_content += scraped.markdown[:2000] + "\n\n"
 
-            messages = [
-                SystemMessage(content=self.prompts.TOOL_EXTRACTION_SYSTEM),
-                HumanMessage(content=self.prompts.tool_extraction_user(state.query, all_content))
-            ]
+        messages = [
+            SystemMessage(content=self.prompts.TOOL_EXTRACTION_SYSTEM),
+            HumanMessage(content=self.prompts.tool_extraction_user(state.query, all_content))
+        ]
 
-            try:
-                response = self.llm.invoke(messages)
-                tool_names = [name.strip() for name in response.content.split("\n") if name.strip()]
-                print(f"🛠️ Extracted Tools: {', '.join(tool_names[:7])}")
-                return {
-                    "extracted_tools": tool_names
-                }
-            except Exception as e:
-                print(f"❌ Exception occured: {e}")
-                return {"extracted_tools": []}
+        try:
+            response = self.llm.invoke(messages)
+            tool_names = [name.strip() for name in response.content.split("\n") if name.strip()]
+            print(f"🛠️ Extracted Tools: {', '.join(tool_names[:7])}")
+            return {
+                "extracted_tools": tool_names
+            }
+        except Exception as e:
+            print(f"❌ Exception occured: {e}")
+            return {"extracted_tools": []}
             
 
     # HELPER FUNCTION
@@ -124,7 +124,7 @@ class Workflow:
                     company.integration_capabilities = analysis.integration_capabilities
 
                 companies.append(company)
-            return {"companies": companies}
+        return {"companies": companies}
 
     
     def _analyze(self, state: ResearchState) -> Dict[str, Any]:
