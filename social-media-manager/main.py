@@ -1,10 +1,13 @@
 from workflow import create_workflow
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from dotenv import load_dotenv
+
+load_dotenv()
 
 thread_count = 1
+workflow = create_workflow()
 
 def main():
-    workflow = create_workflow()
     print("="*50)
     print("Welcome to the Social Media Manager")
     print("="*50)

@@ -1,7 +1,7 @@
 {
     "dockerfile_lines": [],
     "graphs": {
-      
+      "workflow": "./main.py:workflow"
     },
     "python_version": "3.13",
     "env": ".env",

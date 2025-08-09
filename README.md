@@ -89,7 +89,7 @@ This collection includes various types of specialized agents:
 
 - [Google ADK Documentation](https://developers.google.com/agent-development-kit)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [Agent Development Best Practices](https://ai.google.dev/docs/agents)
+- [Agent Development Best Practices](https://www.anthropic.com/engineering/building-effective-agents)
 
 ## 🤝 Contributing
 

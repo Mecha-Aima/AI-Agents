@@ -28,7 +28,7 @@ def content_manager(state: MessagesState, config: RunnableConfig, store: BaseSto
         guidelines=content_guidelines
     )
 
-    response = model.bind_tools([UpdateMemory], parallel_tool_calls=True).invoke(
+    response = model.bind_tools([UpdateMemory], parallel_tool_calls=False).invoke(
         [SystemMessage(content=system_message)] + state['messages']
     )
 

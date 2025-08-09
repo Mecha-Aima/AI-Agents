@@ -7,6 +7,8 @@ __pycache__/
 *.pyd
 *.env
 .env
+.secrets/*
+.secrets
 *.sqlite3
 *.db
 *.log
@@ -31,6 +33,7 @@ pip-wheel-metadata/
 site/
 *.lock
 .venv
+.langgraph_api
 
 # FastAPI (Python web frameworks)
 instance/
