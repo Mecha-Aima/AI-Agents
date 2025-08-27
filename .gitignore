@@ -10,7 +10,6 @@ __pycache__/
 .secrets/*
 .secrets
 *.sqlite3
-*.db
 *.log
 *.pot
 *.pyc
@@ -37,7 +36,6 @@ site/
 
 # FastAPI (Python web frameworks)
 instance/
-*.db
 *.sqlite3
 
 # Node.js / React / Next.js
